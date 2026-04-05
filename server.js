@@ -8,79 +8,38 @@ const PORT = process.env.PORT || 3000;
 // =========================
 // CONFIG
 // =========================
-
-// Fixed starting total
 const BASE_VALUE = 17015632;
-
-// Fixed amount added for each completed day
 const DAILY_FIXED_INCREASE = 7945.21;
 
-// Set this to the date your base total became effective.
-// Example: if 17,015,632 is the total as of 2026-04-05,
-// then the first daily increase applies after that day ends.
-const START_DATE = "2026-04-04";
+// IMPORTANT:
+// If 17,015,632 is the number as of TODAY before today's increase,
+// leave START_DATE as today's date.
+// Then the first +7945.21 gets added after today finishes.
+const START_DATE = "2026-04-05";
 
-// Your business timezone
 const BUSINESS_TIMEZONE = "America/Los_Angeles";
 
-// Shopify env vars from Railway
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
 
 // =========================
-// SIMPLE TOKEN CACHE
+// TOKEN CACHE
 // =========================
-
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
 
 // =========================
 // HELPERS
 // =========================
-
 function roundCurrency(value) {
   return Number((value || 0).toFixed(2));
 }
 
-function validateEnv() {
-  const missing = [];
-
-  if (!SHOPIFY_STORE_DOMAIN) missing.push("SHOPIFY_STORE_DOMAIN");
-  if (!SHOPIFY_CLIENT_ID) missing.push("SHOPIFY_CLIENT_ID");
-  if (!SHOPIFY_CLIENT_SECRET) missing.push("SHOPIFY_CLIENT_SECRET");
-  if (!SHOPIFY_API_VERSION) missing.push("SHOPIFY_API_VERSION");
-
-  if (missing.length) {
-    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
-  }
-}
-
-function getCompletedDayInfo() {
-  const now = DateTime.now().setZone(BUSINESS_TIMEZONE);
-  const todayStart = now.startOf("day");
-  const start = DateTime.fromISO(START_DATE, { zone: BUSINESS_TIMEZONE }).startOf("day");
-
-  const completedDays = Math.max(
-    0,
-    Math.floor(todayStart.diff(start, "days").days)
-  );
-
-  return {
-    now,
-    start,
-    todayStart,
-    completedDays,
-  };
-}
-
 async function getShopifyAccessToken() {
-  validateEnv();
-
   const nowMs = Date.now();
 
-  // Reuse token if still valid, with a 5-minute safety buffer
   if (cachedToken && nowMs < cachedTokenExpiresAt - 5 * 60 * 1000) {
     return cachedToken;
   }
@@ -142,12 +101,11 @@ async function shopifyGraphQL(query, variables = {}) {
   return response.data.data;
 }
 
-async function fetchCumulativeNetRevenue(startDateTimeISO, endDateTimeISO) {
+async function fetchNetRevenueForRange(startDateTimeISO, endDateTimeISO) {
   let hasNextPage = true;
   let cursor = null;
   let totalNetRevenue = 0;
 
-  // Excludes test orders
   const queryString = `created_at:>=${startDateTimeISO} created_at:<${endDateTimeISO} test:false`;
 
   const query = `
@@ -157,7 +115,6 @@ async function fetchCumulativeNetRevenue(startDateTimeISO, endDateTimeISO) {
           cursor
           node {
             id
-            name
             createdAt
             netPaymentSet {
               shopMoney {
@@ -198,19 +155,29 @@ async function fetchCumulativeNetRevenue(startDateTimeISO, endDateTimeISO) {
 // =========================
 // ROUTES
 // =========================
-
 app.get("/", (req, res) => {
   res.send("Counter API is running");
 });
 
 app.get("/counter", async (req, res) => {
   try {
-    const { start, todayStart, completedDays } = getCompletedDayInfo();
+    const now = DateTime.now().setZone(BUSINESS_TIMEZONE);
 
+    // Only count COMPLETED days
+    const todayStart = now.startOf("day");
+    const start = DateTime.fromISO(START_DATE, { zone: BUSINESS_TIMEZONE }).startOf("day");
+
+    const completedDays = Math.max(
+      0,
+      Math.floor(todayStart.diff(start, "days").days)
+    );
+
+    // Pull revenue from START_DATE up to start of today
+    // so only completed days are included
     const startDateTimeISO = start.toUTC().toISO();
     const endDateTimeISO = todayStart.toUTC().toISO();
 
-    const cumulativeNetRevenue = await fetchCumulativeNetRevenue(
+    const cumulativeNetRevenue = await fetchNetRevenueForRange(
       startDateTimeISO,
       endDateTimeISO
     );
@@ -224,7 +191,7 @@ app.get("/counter", async (req, res) => {
       revenueShareTotal;
 
     res.json({
-      endValue: roundCurrency(endValue),
+      endValue: roundCurrency(endValue)
     });
   } catch (error) {
     console.error("Counter error:", error.response?.data || error.message);
