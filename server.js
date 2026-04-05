@@ -8,6 +8,10 @@ const BASE_VALUE = 17000000;
 const DAILY_INCREASE = 7945.21;
 const START_DATE = new Date("2025-01-01");
 
+app.get('/', (req, res) => {
+  res.send('Counter API is running');
+});
+
 app.get('/counter', (req, res) => {
   const now = new Date();
 
@@ -16,7 +20,6 @@ app.get('/counter', (req, res) => {
   );
 
   const dailyTotal = daysElapsed * DAILY_INCREASE;
-
   const total = BASE_VALUE + dailyTotal;
 
   res.json({
