@@ -18,7 +18,7 @@ const DAILY_FIXED_INCREASE = 7945.21;
 // Set this to the date your base total became effective.
 // Example: if 17,015,632 is the total as of 2026-04-05,
 // then the first daily increase applies after that day ends.
-const START_DATE = "2026-04-05";
+const START_DATE = "2026-04-04";
 
 // Your business timezone
 const BUSINESS_TIMEZONE = "America/Los_Angeles";
