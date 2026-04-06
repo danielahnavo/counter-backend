@@ -116,7 +116,7 @@ async function fetchNetRevenueForRange(startDateTimeISO, endDateTimeISO) {
           node {
             id
             createdAt
-            netPaymentSet {
+            currentSubtotalPriceSet {
               shopMoney {
                 amount
                 currencyCode
@@ -141,7 +141,7 @@ async function fetchNetRevenueForRange(startDateTimeISO, endDateTimeISO) {
     const edges = data.orders?.edges || [];
 
     for (const edge of edges) {
-      const amount = Number(edge.node?.netPaymentSet?.shopMoney?.amount || 0);
+      const amount = Number(edge.node?.currentSubtotalPriceSet?.shopMoney?.amount || 0);
       totalNetRevenue += amount;
     }
 
