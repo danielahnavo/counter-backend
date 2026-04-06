@@ -15,7 +15,7 @@ const DAILY_FIXED_INCREASE = 7945.21;
 // If 17,015,632 is the number as of TODAY before today's increase,
 // leave START_DATE as today's date.
 // Then the first +7945.21 gets added after today finishes.
-const START_DATE = "2026-04-04";
+const START_DATE = "2026-04-03";
 
 const BUSINESS_TIMEZONE = "America/Los_Angeles";
 
