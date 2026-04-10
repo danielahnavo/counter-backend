@@ -34,7 +34,7 @@ let cachedTokenExpiresAt = 0;
 // HELPERS
 // =========================
 function roundCurrency(value) {
-  return Number((value || 0).toFixed(2));
+  return Math.round(value || 0);
 }
 
 async function getShopifyAccessToken() {
